@@ -17,6 +17,10 @@ def erase_line(canvas, p1, p2, radius=40):
 # INITIAL SETUP
 # -----------------------------
 cap = cv2.VideoCapture(0)
+# Set higher resolution for bigger screen
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 960)
+cap.set(cv2.CAP_PROP_FPS, 30)
 detector = HandDetector("models/hand_landmarker.task")
 
 canvas = None
@@ -25,6 +29,10 @@ prev_point = None
 # FIX: drawing state
 is_drawing = False
 is_erasing = False
+
+# Position smoothing for better accuracy
+smoothing_state = {'ix': 0, 'iy': 0}
+smoothing_factor = 0.6  # 0-1, higher = smoother but more laggy
 
 current_color = (255, 0, 255)
 colors = [(255,0,255), (0,255,0), (255,0,0), (0,0,255), (255,255,0)]
@@ -48,6 +56,10 @@ save_x, save_y = 20, 20
 clear_x, clear_y = 140, 20
 
 print("Press Q to quit")
+
+# Set window size for bigger display
+cv2.namedWindow("Gesture Whiteboard", cv2.WINDOW_NORMAL)
+cv2.resizeWindow("Gesture Whiteboard", 1280, 960)
 
 # -----------------------------
 # MAIN LOOP
@@ -88,8 +100,17 @@ while True:
     if hand:
         fingers = fingers_up(hand)
 
-        ix = int(hand[8].x * w)
-        iy = int(hand[8].y * h)
+        # Get raw finger position
+        raw_ix = int(hand[8].x * w)
+        raw_iy = int(hand[8].y * h)
+        
+        # Apply smoothing for better accuracy
+        ix = int(smoothing_state['ix'] * smoothing_factor + raw_ix * (1 - smoothing_factor))
+        iy = int(smoothing_state['iy'] * smoothing_factor + raw_iy * (1 - smoothing_factor))
+        
+        # Update smoothed values for next frame
+        smoothing_state['ix'] = ix
+        smoothing_state['iy'] = iy
 
         # -----------------------------
         # SAVE BUTTON
